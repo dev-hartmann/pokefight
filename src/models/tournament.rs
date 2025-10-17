@@ -13,14 +13,16 @@ pub struct MatchResult {
 
 pub struct Tournament {
     name: String,
+    chore: String,
     participants: Vec<Trainer>,
     reporter: TournamentReporter,
 }
 
 impl Tournament {
-    pub fn new(participants: Vec<Trainer>, name: &str) -> Self {
+    pub fn new(participants: Vec<Trainer>, name: &str, chore: &str) -> Self {
         Self {
             name: name.into(),
+            chore: chore.into(),
             participants,
             reporter: TournamentReporter::new(),
         }
@@ -29,6 +31,11 @@ impl Tournament {
     pub fn get_name(&self) -> &str {
         &self.name
     }
+
+    pub fn get_chore(&self) -> &str {
+        &self.chore
+    }
+
     fn get_type_effectiveness(&self, attacker_type: &str, defender_type: &str) -> f64 {
         match (attacker_type, defender_type) {
             // Fire advantages
@@ -83,15 +90,21 @@ impl Tournament {
 
         while current_fighters.len() > 1 {
             let round_matches = self.run_elimination_round(current_fighters, round_num);
-            current_fighters = round_matches.iter().map(|m| {
-                self.participants.iter().find(|t| t.get_name() == m.winner).unwrap()
-            }).collect();
+            current_fighters = round_matches
+                .iter()
+                .map(|m| {
+                    self.participants
+                        .iter()
+                        .find(|t| t.get_name() == m.winner)
+                        .unwrap()
+                })
+                .collect();
             all_matches.extend(round_matches);
             round_num += 1;
         }
 
         current_fighters.into_iter().next().map(|champion| {
-            self.reporter.print_bracket(&all_matches, champion);
+            self.reporter.print_bracket(self, &all_matches, champion);
             champion
         })
     }
@@ -101,14 +114,14 @@ impl Tournament {
         fighters: Vec<&'a Trainer>,
         round_num: usize,
     ) -> Vec<MatchResult> {
-        let (pairs, bye) = self.create_pairings(fighters);
+        let (pairs, free_pass_figter) = self.create_pairings(fighters);
         let mut matches = Vec::new();
 
-        if let Some(bye_fighter) = bye {
+        if let Some(fp_fighter) = free_pass_figter {
             matches.push(MatchResult {
-                fighter1: bye_fighter.get_name().to_string(),
+                fighter1: fp_fighter.get_name().to_string(),
                 fighter2: "free_pass".to_string(),
-                winner: bye_fighter.get_name().to_string(),
+                winner: fp_fighter.get_name().to_string(),
                 round: round_num,
             });
         }
@@ -143,7 +156,6 @@ impl Tournament {
 
         (pairs, bye)
     }
-
 }
 
 #[cfg(test)]
@@ -162,7 +174,8 @@ mod tests {
         let trainer2 = Trainer::new("Gary".to_string(), charmander);
 
         // Create tournament
-        let mut tournament = Tournament::new(vec![trainer1, trainer2], "Test Tournament");
+        let mut tournament =
+            Tournament::new(vec![trainer1, trainer2], "Test Tournament", "Test Chore");
 
         // Start tournament
         let winner = tournament.start();
@@ -186,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_tournament_with_zero_trainers() {
-        let mut tournament = Tournament::new(vec![], "Empty Tournament");
+        let tournament = Tournament::new(vec![], "Empty Tournament", "Test Chore");
         let winner = tournament.start();
         assert!(
             winner.is_none(),
@@ -199,7 +212,7 @@ mod tests {
         let pikachu = create_test_pokemon("pikachu", 35, 55, 40, 90, "electric");
         let trainer = Trainer::new("Ash".to_string(), pikachu);
 
-        let mut tournament = Tournament::new(vec![trainer], "Single Trainer Tournament");
+        let tournament = Tournament::new(vec![trainer], "Single Trainer Tournament", "test chore");
         let winner = tournament.start();
 
         assert!(
@@ -224,6 +237,7 @@ mod tests {
         let mut tournament = Tournament::new(
             vec![trainer1, trainer2, trainer3],
             "Three Trainer Tournament",
+            "Test Chore",
         );
 
         // Start tournament
@@ -265,12 +279,15 @@ mod tests {
             Trainer::new("Officer Jenny".to_string(), pokemon8),
         ];
 
-        let tournament = Tournament::new(trainers, "Eight-Player Tournament");
+        let tournament = Tournament::new(trainers, "Eight-Player Tournament", "Test Chore");
         let winner = tournament.start();
 
         assert!(winner.is_some(), "Tournament should have a winner");
         // Just verify there is a champion - actual winner depends on battle logic
         let champion = winner.unwrap();
-        assert!(!champion.get_name().is_empty(), "Champion should have a name");
+        assert!(
+            !champion.get_name().is_empty(),
+            "Champion should have a name"
+        );
     }
 }

@@ -15,5 +15,8 @@ pub enum Commands {
 
         #[arg(short, long)]
         title: String,
+
+        #[arg(short, long)]
+        chore: String,
     },
 }
