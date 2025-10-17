@@ -3,11 +3,14 @@ use cli::{Cli, Commands};
 use models::{tournament::Tournament, trainer::Trainer};
 
 mod cli;
+mod errors;
 mod models;
 mod pokeservice;
 
+use errors::Result;
+
 #[tokio::main]
-async fn main() -> Result<(), reqwest::Error> {
+async fn main() -> Result<()> {
     let cli = Cli::parse();
     let mut poke_service = pokeservice::PokeService::new();
 

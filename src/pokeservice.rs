@@ -1,3 +1,4 @@
+use crate::errors::Result;
 use crate::models::pokemon::Pokemon;
 use rand::Rng;
 use reqwest::Client;
@@ -15,7 +16,7 @@ impl PokeService {
         PokeService { client, cache }
     }
 
-    pub async fn get_random_pokemon(&mut self) -> Result<Pokemon, reqwest::Error> {
+    pub async fn get_random_pokemon(&mut self) -> Result<Pokemon> {
         let mut rng = rand::rng();
         let rand_id = rng.random_range(1..900);
         let pokemon = self
