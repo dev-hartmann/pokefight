@@ -2,18 +2,15 @@ use crate::errors::Result;
 use crate::models::pokemon::Pokemon;
 use rand::Rng;
 use reqwest::Client;
-use std::collections::HashMap;
 
 pub struct PokeService {
     client: Client,
-    cache: HashMap<String, String>,
 }
 
 impl PokeService {
     pub fn new() -> Self {
         let client = reqwest::Client::new();
-        let cache = HashMap::new();
-        PokeService { client, cache }
+        PokeService { client }
     }
 
     pub async fn get_random_pokemon(&mut self) -> Result<Pokemon> {

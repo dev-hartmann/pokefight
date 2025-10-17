@@ -1,4 +1,4 @@
-use super::pokemon::{self, BattlePokemon, Pokemon};
+use super::pokemon::{BattlePokemon, Pokemon};
 
 #[derive(Debug, Clone)]
 pub struct Trainer {
@@ -11,7 +11,7 @@ impl Trainer {
         Self { name, pokemon }
     }
 
-    pub fn get_pokemon(&self) -> BattlePokemon {
+    pub fn get_pokemon(&self) -> BattlePokemon<'_> {
         BattlePokemon::new(&self.pokemon)
     }
 
