@@ -49,6 +49,38 @@
           );
       };
 
+      packages = forEachSupportedSystem (
+        { pkgs }:
+        {
+          default = pkgs.rustPlatform.buildRustPackage {
+            pname = "pokefight";
+            version = "0.1.0";
+
+            src = ./.;
+
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+            };
+
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+            ];
+
+            buildInputs = with pkgs; [
+              openssl
+            ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+              pkgs.darwin.apple_sdk.frameworks.Security
+              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+            ];
+
+            meta = {
+              description = "A Pokemon battle simulator";
+              mainProgram = "pokefight";
+            };
+          };
+        }
+      );
+
       devShells = forEachSupportedSystem (
         { pkgs }:
         {
@@ -70,5 +102,16 @@
           };
         }
       );
+
+      githubActions.matrix = {
+        include = [
+          {
+            os = "ubuntu-latest";
+            system = "x86_64-linux";
+            name = "pokefight";
+            attr = "packages.x86_64-linux.default";
+          }
+        ];
+      };
     };
 }
