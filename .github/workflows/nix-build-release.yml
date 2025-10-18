@@ -1,0 +1,82 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+
+jobs:
+  build:
+    name: Build ${{ matrix.system }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - system: x86_64-linux
+            os: ubuntu-latest
+          - system: aarch64-linux
+            os: ubuntu-latest
+          - system: x86_64-darwin
+            os: macos-13
+          - system: aarch64-darwin
+            os: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v14
+
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
+
+      - name: Build package
+        run: |
+          nix build .#packages.${{ matrix.system }}.default -L
+
+      - name: Check build output
+        run: |
+          ls -la result/bin/
+
+      - name: Copy binary
+        run: |
+          mkdir -p dist
+          cp result/bin/pokefight dist/pokefight-${{ matrix.system }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pokefight-${{ matrix.system }}
+          path: dist/pokefight-${{ matrix.system }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          for system in x86_64-linux aarch64-linux x86_64-darwin aarch64-darwin; do
+            cp artifacts/pokefight-${system}/pokefight-${system} release/
+            chmod +x release/pokefight-${system}
+            tar -czf release/pokefight-${system}.tar.gz -C release pokefight-${system}
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
