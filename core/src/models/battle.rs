@@ -89,6 +89,13 @@ impl<'a> Battle<'a, Finished> {
             self.participants.faster.trainer
         }
     }
+    pub fn looser(&self) -> &'a Trainer {
+        if self.participants.faster.pokemon.is_fainted() {
+            self.participants.faster.trainer
+        } else {
+            self.participants.slower.trainer
+        }
+    }
 }
 
 // Round iterator for executing battle rounds

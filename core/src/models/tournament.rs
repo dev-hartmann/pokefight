@@ -1,21 +1,32 @@
+use crate::errors::{PokeFightError, Result};
 use crate::models::trainer::Trainer;
+use serde::{Deserialize, Serialize};
 
 use super::battle::Battle;
-use super::tournament_reporter::TournamentReporter;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchResult {
     pub fighter1: String,
+    pub fighter1_pokemon: String,
     pub fighter2: String,
+    pub fighter2_pokemon: String,
     pub winner: String,
+    pub looser: String,
     pub round: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TournamentResult {
+    pub name: String,
+    pub chore: String,
+    pub matches: Vec<MatchResult>,
+    pub champion: String,
 }
 
 pub struct Tournament {
     name: String,
     chore: String,
     participants: Vec<Trainer>,
-    reporter: TournamentReporter,
 }
 
 impl Tournament {
@@ -24,7 +35,6 @@ impl Tournament {
             name: name.into(),
             chore: chore.into(),
             participants,
-            reporter: TournamentReporter::new(),
         }
     }
 
@@ -65,7 +75,11 @@ impl Tournament {
         }
     }
 
-    fn fight<'a>(&self, fighter_one: &'a Trainer, fighter_two: &'a Trainer) -> &'a Trainer {
+    fn fight<'a>(
+        &self,
+        fighter_one: &'a Trainer,
+        fighter_two: &'a Trainer,
+    ) -> (&'a Trainer, &'a Trainer) {
         let mut battle = Battle::new(fighter_one, fighter_two).begin();
         let mut rounds = battle.rounds();
 
@@ -75,13 +89,15 @@ impl Tournament {
         {
             // Round completed, continue
         }
-
-        battle.finish().winner()
+        let finished_battle = battle.finish();
+        (&finished_battle.winner(), &finished_battle.looser())
     }
-    pub fn start(&self) -> Option<&Trainer> {
+
+    pub fn start(&self) -> Result<TournamentResult> {
         if self.participants.len() < 2 {
-            self.reporter.print_insufficient_participants();
-            return None;
+            return Err(PokeFightError::InvalidParticipantCount(
+                self.participants.len(),
+            ));
         }
 
         let mut current_fighters: Vec<&Trainer> = self.participants.iter().collect();
@@ -103,35 +119,41 @@ impl Tournament {
             round_num += 1;
         }
 
-        current_fighters.into_iter().next().map(|champion| {
-            self.reporter.print_bracket(self, &all_matches, champion);
-            champion
+        let champion = current_fighters[0].get_name().to_string();
+
+        Ok(TournamentResult {
+            name: self.name.clone(),
+            chore: self.chore.clone(),
+            matches: all_matches,
+            champion,
         })
     }
 
-    fn run_elimination_round<'a>(
-        &self,
-        fighters: Vec<&'a Trainer>,
-        round_num: usize,
-    ) -> Vec<MatchResult> {
+    fn run_elimination_round(&self, fighters: Vec<&Trainer>, round_num: usize) -> Vec<MatchResult> {
         let (pairs, free_pass_figter) = self.create_pairings(fighters);
         let mut matches = Vec::new();
 
         if let Some(fp_fighter) = free_pass_figter {
             matches.push(MatchResult {
                 fighter1: fp_fighter.get_name().to_string(),
+                fighter1_pokemon: fp_fighter.get_pokemon().get_name().to_string(),
                 fighter2: "free_pass".to_string(),
+                fighter2_pokemon: "".to_string(),
+                looser: "free_pass".to_string(),
                 winner: fp_fighter.get_name().to_string(),
                 round: round_num,
             });
         }
 
         for (f1, f2) in pairs.into_iter() {
-            let winner = self.fight(f1, f2);
+            let (winner, looser) = self.fight(f1, f2);
             matches.push(MatchResult {
                 fighter1: f1.get_name().to_string(),
+                fighter1_pokemon: f1.get_pokemon().get_name().to_string(),
                 fighter2: f2.get_name().to_string(),
+                fighter2_pokemon: f2.get_pokemon().get_name().to_string(),
                 winner: winner.get_name().to_string(),
+                looser: looser.get_name().to_string(),
                 round: round_num,
             });
         }
@@ -174,25 +196,20 @@ mod tests {
         let trainer2 = Trainer::new("Gary".to_string(), charmander);
 
         // Create tournament
-        let mut tournament =
-            Tournament::new(vec![trainer1, trainer2], "Test Tournament", "Test Chore");
+        let tournament = Tournament::new(vec![trainer1, trainer2], "Test Tournament", "Test Chore");
 
         // Start tournament
-        let winner = tournament.start();
+        let tournament_result = tournament.start();
 
         // Assert we have a winner
-        assert!(winner.is_some(), "Tournament should have a winner");
+        assert!(tournament_result.is_ok(), "Tournament should have a winner");
 
-        let champion = winner.unwrap();
-
-        // Assert winner is one of the two trainers
-        assert!(champion.get_name() == "Ash");
+        let champion = tournament_result.unwrap().champion;
 
         // With these stats, Pikachu (higher speed) should win
         // Speed: Pikachu=90, Charmander=65, so Pikachu attacks first
         assert_eq!(
-            champion.get_name(),
-            "Ash",
+            champion, "Ash",
             "Ash with Pikachu should win due to higher speed"
         );
     }
@@ -202,7 +219,7 @@ mod tests {
         let tournament = Tournament::new(vec![], "Empty Tournament", "Test Chore");
         let winner = tournament.start();
         assert!(
-            winner.is_none(),
+            winner.is_err(),
             "Tournament with no trainers should return None"
         );
     }
@@ -216,8 +233,8 @@ mod tests {
         let winner = tournament.start();
 
         assert!(
-            winner.is_none(),
-            "Tournament with one trainer should return None"
+            winner.is_err(),
+            "Tournament with one trainer should return Error"
         );
     }
 
@@ -234,24 +251,23 @@ mod tests {
         let trainer3 = Trainer::new("Misty".to_string(), bulbasaur);
 
         // Create tournament with 3 participants
-        let mut tournament = Tournament::new(
+        let tournament = Tournament::new(
             vec![trainer1, trainer2, trainer3],
             "Three Trainer Tournament",
             "Test Chore",
         );
 
         // Start tournament
-        let winner = tournament.start();
+        let tournament_result = tournament.start();
 
         // Assert we have a winner
-        assert!(winner.is_some(), "Tournament should have a winner");
+        assert!(tournament_result.is_ok(), "Tournament should have a winner");
 
-        let champion = winner.unwrap();
+        let champion = tournament_result.unwrap().champion;
 
         // Gary's Charmander should win (500 HP, 95 speed beats everyone)
         assert_eq!(
-            champion.get_name(),
-            "Gary",
+            champion, "Gary",
             "Gary with overpowered Charmander should win"
         );
     }
@@ -280,14 +296,11 @@ mod tests {
         ];
 
         let tournament = Tournament::new(trainers, "Eight-Player Tournament", "Test Chore");
-        let winner = tournament.start();
+        let tournament_result = tournament.start();
 
-        assert!(winner.is_some(), "Tournament should have a winner");
+        assert!(tournament_result.is_ok(), "Tournament should have a result");
         // Just verify there is a champion - actual winner depends on battle logic
-        let champion = winner.unwrap();
-        assert!(
-            !champion.get_name().is_empty(),
-            "Champion should have a name"
-        );
+        let champion = tournament_result.unwrap().champion;
+        assert!(!champion.is_empty(), "Champion should have a name");
     }
 }

@@ -1,0 +1,31 @@
+use std::fmt::Result;
+
+use clap::Parser;
+use cli::{Cli, Commands};
+use pokefight_core::{models::{tournament, trainer}, PokeFightError, PokeService, Tournament, Trainer};
+
+mod cli;
+
+#[tokio::main]
+async fn main() -> pokefight_core::Result<()> {
+    let args = Cli::parse();
+    let mut poke_service = PokeService::new();
+
+    match &args.commands {
+        Some(Commands::Tournament {
+            names,
+            title,
+            chore,
+        }) => {
+            let mut participants: Vec<Trainer> = vec![];
+            for name in names {
+                let pokemon = poke_service.get_random_pokemon().await?;
+                let trainer = Trainer::new(name, pokemon);
+                participants.push(trainer);
+                let tournament = Tournament::new(participants,title, chore)
+            }
+        }
+        None => return Err(PokeFightError::NoParticipants),
+    }
+    Ok(())
+}

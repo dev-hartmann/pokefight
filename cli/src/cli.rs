@@ -18,5 +18,14 @@ pub enum Commands {
 
         #[arg(short, long)]
         chore: String,
+
+        #[arg(short, long, default_value = "text")]
+        format: OutputFormat,
     },
+}
+
+#[derive(Clone, clap::ValueEnum)]
+pub enum OutputFormat {
+    Text,
+    Json,
 }

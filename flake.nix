@@ -2,7 +2,7 @@
   description = "A Nix-flake-based Rust development environment";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1"; # unstable Nixpkgs
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
     fenix = {
       url = "https://flakehub.com/f/nix-community/fenix/0.1";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -68,10 +68,10 @@
 
             buildInputs = with pkgs; [
               openssl
-            ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-              pkgs.darwin.apple_sdk.frameworks.Security
-              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-            ];
+            ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs.darwin; [
+              apple_sdk.frameworks.Security
+              apple_sdk.frameworks.SystemConfiguration
+            ]);
 
             meta = {
               description = "A Pokemon battle simulator";
@@ -84,7 +84,7 @@
       devShells = forEachSupportedSystem (
         { pkgs }:
         {
-          default = pkgs.mkShellNoCC {
+          default = pkgs.mkShell {
             packages = with pkgs; [
               rustToolchain
               openssl

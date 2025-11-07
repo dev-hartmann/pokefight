@@ -1,0 +1,14 @@
+[package]
+name = "pokefight"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "pokefight"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["derive"]}
+pokefight-core = { path = "../core"}
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["full"] }
