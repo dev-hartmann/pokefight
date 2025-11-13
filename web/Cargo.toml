@@ -1,0 +1,11 @@
+[package]
+name = "pokefight-web"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pokefight-core = { path = "../core"}
+axum = { version = "0.8", features = ["json", "macros"] }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["full"] }
+

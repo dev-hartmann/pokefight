@@ -9,7 +9,7 @@ mod display;
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    let mut poke_service = PokeService::new();
+    let mut poke_service = PokeService::default();
 
     match &args.commands {
         Some(Commands::Tournament {
@@ -33,8 +33,9 @@ async fn main() -> Result<()> {
                     print!("{}", TournamentDisplay::new(&tournament_result));
                 }
                 OutputFormat::Json => {
-                    let json = serde_json::to_string_pretty(&tournament_result)
-                        .map_err(|e| PokeFightError::TournamentError(format!("JSON serialization failed: {}", e)))?;
+                    let json = serde_json::to_string_pretty(&tournament_result).map_err(|e| {
+                        PokeFightError::TournamentError(format!("JSON serialization failed: {}", e))
+                    })?;
                     println!("{}", json);
                 }
             }
